@@ -915,6 +915,14 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
             long timestamp = record.timestamp();
             TimestampType timestampType = batch.timestampType();
             Headers headers = new RecordHeaders(record.headers());
+
+            // Dump consumer patch
+            if (batch.hasProducerId()) {
+                headers.add("producerId", Longs.toByteArray(batch.producerId()))
+                    .add("producerEpoch", Shorts.toByteArray(batch.producerEpoch()));
+            }
+            headers.add("control", new byte[] { (byte) (batch.isControlBatch() ? 1 : 0) } );
+
             ByteBuffer keyBytes = record.key();
             byte[] keyByteArray = keyBytes == null ? null : Utils.toArray(keyBytes);
             K key = keyBytes == null ? null : this.keyDeserializer.deserialize(partition.topic(), headers, keyByteArray);
@@ -1064,12 +1072,13 @@ public class Fetcher<K, V> implements SubscriptionState.Listener, Closeable {
                         maybeEnsureValid(record);
 
                         // control records are not returned to the user
-                        if (!currentBatch.isControlBatch()) {
+                        // dump consumer patch
+                        //if (!currentBatch.isControlBatch()) {
                             return record;
-                        } else {
+                        //} else {
                             // Increment the next fetch offset when we skip a control batch.
-                            nextFetchOffset = record.offset() + 1;
-                        }
+                        //    nextFetchOffset = record.offset() + 1;
+                        //}
                     }
                 }
             }
